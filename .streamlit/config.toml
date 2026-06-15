@@ -1,0 +1,23 @@
+[theme]
+primaryColor = "#E53935"
+backgroundColor = "#F5F5F5"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#212121"
+font = "sans-serif"
+
+[server]
+headless = true
+port = 8501
+maxUploadSize = 50
+enableXsrfProtection = true
+enableWebsocketCompression = true
+
+[browser]
+gatherUsageStats = false
+serverAddress = "0.0.0.0"
+
+[logger]
+level = "info"
+
+[runner]
+fastReruns = true
