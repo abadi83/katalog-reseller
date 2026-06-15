@@ -1,0 +1,16 @@
+# Docker ignore — exclude development & sensitive files
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.env
+.git/
+.gitignore
+*.md
+venv/
+.venv/
+.vscode/
+*.code-workspace
+node_modules/
+.DS_Store
+Thumbs.db
