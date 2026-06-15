@@ -208,6 +208,38 @@ def _reseller_chat_view(user: str, name: str, role: str):
         send_message(user, name, "admin", reply_text)
         st.rerun()
 
+    # ── WhatsApp quick link ──
+    st.markdown("---")
+    st.markdown("### 📱 Butuh respon cepat?")
+    wa_number = "6285211112525"  # Ganti dengan nomor WhatsApp Admin
+    wa_link = f"https://wa.me/{wa_number}?text=Halo%20Admin%2C%20saya%20{name.replace(' ', '%20')}%20dari%20Katalog%20Reseller..."
+    st.markdown(f"""
+    <div style="
+        background: #E8F5E9;
+        border: 1px solid #A5D6A7;
+        border-radius: 12px;
+        padding: 16px;
+        text-align: center;
+    ">
+        <p style="margin:0 0 8px 0; color:#2E7D32; font-weight:600;">
+            💚 Chat langsung via WhatsApp untuk respon lebih cepat!
+        </p>
+        <a href="{wa_link}" target="_blank" style="
+            display: inline-block;
+            background: #25D366;
+            color: white;
+            padding: 10px 24px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        ">
+            💬 Chat via WhatsApp
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
+
 
 # ── Message Renderer ─────────────────────────────────────────
 def _render_messages(messages: list, current_user: str):

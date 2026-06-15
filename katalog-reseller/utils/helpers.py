@@ -56,6 +56,12 @@ def show_product_card(product: dict):
     if len(images) > 1:
         img_count_badge = f'<div style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,0.6);color:white;padding:2px 6px;border-radius:4px;font-size:0.65rem;">📷{len(images)}</div>'
 
+    # 3D badge
+    has_3d = bool(product.get("model_3d"))
+    badge_3d = ""
+    if has_3d:
+        badge_3d = '<div style="position:absolute;top:8px;right:8px;background:linear-gradient(135deg,#1a237e,#0d47a1);color:white;padding:4px 8px;border-radius:6px;font-size:0.7rem;font-weight:600;">🧊 3D</div>'
+
     st.markdown(f"""
     <div style="
         background: white;
@@ -70,8 +76,10 @@ def show_product_card(product: dict):
         <div style="position: relative; aspect-ratio: 1; overflow: hidden;">
             <img src="{first_img}" style="width: 100%; height: 100%; object-fit: cover;" alt="{product['name']}">
             {img_count_badge}
-            {f'<div style="position:absolute;top:8px;right:8px;background:#E53935;color:white;padding:4px 8px;border-radius:6px;font-size:0.7rem;font-weight:600;">SALE</div>' if product['category'] == 'SALE' else ''}
+            {badge_3d}
+            {f'<div style="position:absolute;top:8px;right:8px;background:#E53935;color:white;padding:4px 8px;border-radius:6px;font-size:0.7rem;font-weight:600;">SALE</div>' if product['category'] == 'SALE' and not has_3d else ''}
             {f'<div style="position:absolute;top:8px;left:8px;background:#4CAF50;color:white;padding:4px 8px;border-radius:6px;font-size:0.7rem;">Bisa Retur</div>' if product['can_return'] else ''}
+            {f'<div style="position:absolute;top:34px;right:8px;background:#E53935;color:white;padding:4px 8px;border-radius:6px;font-size:0.7rem;font-weight:600;">SALE</div>' if product['category'] == 'SALE' and has_3d else ''}
         </div>
         <div style="padding: 12px;">
             <div style="font-size:0.7rem;color:#E53935;font-weight:600;margin-bottom:4px;">{product['sku']}</div>

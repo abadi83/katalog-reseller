@@ -7,6 +7,7 @@ from data.products import PRODUCTS as DEFAULT_PRODUCTS, pil_to_base64
 from PIL import Image
 from io import BytesIO
 import copy
+import base64
 
 
 def save_uploaded_images(uploaded_files) -> list:
@@ -30,6 +31,32 @@ def save_uploaded_images(uploaded_files) -> list:
         except Exception as e:
             st.warning(f"Gagal memproses gambar {file.name}: {e}")
     return images
+
+
+def save_3d_model(uploaded_file) -> str | None:
+    """Convert uploaded 3D model (.glb/.gltf) to base64 data URL.
+    Returns None if no file or error."""
+    if uploaded_file is None:
+        return None
+    try:
+        file_bytes = uploaded_file.read()
+        if len(file_bytes) > 20 * 1024 * 1024:  # Max 20MB
+            st.error("❌ File 3D terlalu besar! Maksimal 20MB.")
+            return None
+        b64 = base64.b64encode(file_bytes).decode()
+        # Determine mime type
+        name = uploaded_file.name.lower()
+        if name.endswith('.glb'):
+            mime = "model/gltf-binary"
+        elif name.endswith('.gltf'):
+            mime = "model/gltf+json"
+        else:
+            st.error("❌ Format tidak didukung. Gunakan .glb atau .gltf")
+            return None
+        return f"data:{mime};base64,{b64}"
+    except Exception as e:
+        st.error(f"❌ Gagal memproses file 3D: {e}")
+        return None
 
 
 def _init_image_slots(prefix: str, existing_images: list = None):
@@ -250,6 +277,20 @@ def _tab_add_product():
     st.markdown("---")
     _render_image_slot_grid("add")
 
+    # ── 3D Model Upload ──
+    st.markdown("---")
+    st.markdown("### 🧊 Model 3D (Opsional)")
+    st.caption("Upload file .glb atau .gltf — Pembeli bisa melihat produk dalam 3D!")
+    model_3d_file = st.file_uploader(
+        "📤 Upload Model 3D (.glb / .gltf)",
+        type=["glb", "gltf"],
+        key="add_model_3d",
+        accept_multiple_files=False,
+    )
+    model_3d_data = save_3d_model(model_3d_file) if model_3d_file else None
+    if model_3d_data:
+        st.success("✅ Model 3D berhasil diupload! 🧊")
+
     # Auto-generated SKU preview (only if no manual SKU)
     if sku_manual.strip():
         preview_sku = sku_manual.strip().upper()
@@ -307,6 +348,7 @@ def _tab_add_product():
                 "can_return": can_return,
                 "images": _collect_slot_images("add")
                           or ["https://placehold.co/400x400/E53935/FFF?text=NEW"],
+                "model_3d": model_3d_data,
                 "description": description,
                 "weight": weight,
                 "colors": [c.strip() for c in colors.split(",") if c.strip()],
@@ -570,6 +612,29 @@ def _tab_edit_product():
         existing_images = [product["image"]]
     _render_image_slot_grid("edit", existing_images)
 
+    # ── 3D Model ──
+    st.markdown("---")
+    st.markdown("### 🧊 Model 3D (Opsional)")
+    existing_3d = product.get("model_3d")
+    if existing_3d:
+        st.success("✅ Produk ini sudah memiliki model 3D. Upload baru untuk mengganti.")
+        if st.button("🗑️ Hapus Model 3D", key="edit_del_3d"):
+            for i, p in enumerate(st.session_state.products):
+                if p["sku"] == sku:
+                    st.session_state.products[i]["model_3d"] = None
+                    st.success("✅ Model 3D dihapus!")
+                    st.rerun()
+            st.stop()
+    model_3d_file = st.file_uploader(
+        "📤 Upload Model 3D (.glb / .gltf) — Maks 20MB",
+        type=["glb", "gltf"],
+        key="edit_model_3d",
+        accept_multiple_files=False,
+    )
+    new_model_3d = save_3d_model(model_3d_file) if model_3d_file else existing_3d
+    if model_3d_file and new_model_3d:
+        st.success("✅ Model 3D baru siap disimpan! 🧊")
+
     col_save, col_del = st.columns([3, 1])
 
     with col_save:
@@ -597,6 +662,7 @@ def _tab_edit_product():
                             "available": new_available,
                             "can_return": new_can_return,
                             "images": final_images,
+                            "model_3d": new_model_3d,
                             "description": new_desc,
                             "weight": new_weight,
                             "colors": [c.strip() for c in new_colors.split(",")
