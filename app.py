@@ -1,4 +1,4 @@
-"""KATALOG RESELLER - Streamlit PWA
+﻿"""KATALOG RESELLER - Streamlit PWA
 Aplikasi Katalog Barang dengan SKU untuk Reseller Toko.
 Mobile-friendly & installable as PWA.
 """
@@ -22,6 +22,11 @@ from utils.admin import (
 from utils.chat import page_chat, init_chat, get_unread_count
 from data.commissions import add_commission, get_commissions_for_marketing, get_total_commission, get_pending_commission
 from data.resellers import get_reseller_by_email, get_downline_list, get_all_resellers
+from data.requests import add_request, get_all_requests, get_requests_by_reseller, get_pending_count, update_request_status, delete_request
+
+# ── Konfigurasi ──────────────────────────────────────────────
+ADMIN_WHATSAPP = "6285211112525"  # Ganti dengan nomor admin
+ADMIN_NAME = "Admin Katalog"
 
 # ── Page Config ──────────────────────────────────────────────
 st.set_page_config(
@@ -35,6 +40,53 @@ st.set_page_config(
         "About": "Katalog Reseller v1.0 - Aplikasi Katalog SKU untuk Reseller",
     },
 )
+
+# ── WhatsApp Floating Button ────────────────────────────────
+def inject_whatsapp_button():
+    """Inject floating WhatsApp contact button via st.markdown with inline styles."""
+    wa_number = ADMIN_WHATSAPP
+    wa_message = "Halo Admin, saya mau tanya tentang produk Katalog Reseller..."
+    from urllib.parse import quote
+    wa_link = f"https://wa.me/{wa_number}?text={quote(wa_message)}"
+
+    st.markdown(f"""
+    <a href="{wa_link}" target="_blank" title="Hubungi via WhatsApp" style="
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        z-index: 99999;
+        width: 60px;
+        height: 60px;
+        background: #25D366;
+        border-radius: 50%;
+        box-shadow: 0 4px 16px rgba(37, 211, 102, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+    ">
+        <svg viewBox="0 0 24 24" style="width:32px;height:32px;fill:white;">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+        </svg>
+    </a>
+    <div style="
+        position: fixed;
+        bottom: 92px;
+        right: 24px;
+        z-index: 99999;
+        background: white;
+        color: #212121;
+        padding: 10px 16px;
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        font-size: 0.85rem;
+        font-weight: 600;
+        white-space: nowrap;
+    ">💬 Butuh bantuan? Chat Admin</div>
+    """, unsafe_allow_html=True)
+
 
 # ── PWA Injection ────────────────────────────────────────────
 def inject_pwa():
@@ -244,6 +296,20 @@ def inject_css():
         border-radius: 4px;
         font-size: 0.7rem;
         font-weight: 700;
+    }
+
+    /* ── WhatsApp Floating Button ── */
+    @keyframes wa-bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-6px); }
+    }
+    a[title="Hubungi via WhatsApp"] {
+        animation: wa-bounce 2s infinite !important;
+    }
+    a[title="Hubungi via WhatsApp"]:hover {
+        animation: none !important;
+        transform: scale(1.1) !important;
+        box-shadow: 0 6px 24px rgba(37, 211, 102, 0.6) !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -520,7 +586,49 @@ def page_product_detail():
         else:
             st.info("🔑 **Login terlebih dahulu** untuk menambah ke keranjang")
 
-    # ── Description ──
+    # ── WhatsApp Contact ──
+    from urllib.parse import quote
+    wa_msg_detail = f"Halo Admin, saya tertarik dengan produk {product['sku']} - {product['name']}..."
+    wa_link_detail = f"https://wa.me/{ADMIN_WHATSAPP}?text={quote(wa_msg_detail)}"
+    st.markdown(f"""
+    <div style="
+        background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
+        border: 1px solid #A5D6A7;
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin: 16px 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        justify-content: space-between;
+        flex-wrap: wrap;
+    ">
+        <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:1.8rem;">💬</span>
+            <div>
+                <div style="font-weight:700;color:#2E7D32;">Punya pertanyaan?</div>
+                <div style="font-size:0.8rem;color:#616161;">Chat langsung via WhatsApp</div>
+            </div>
+        </div>
+        <a href="{wa_link_detail}" target="_blank" style="text-decoration:none;">
+            <button style="
+                padding:10px 20px;
+                border-radius:10px;
+                border:none;
+                background:#25D366;
+                color:white;
+                font-weight:600;
+                font-size:0.9rem;
+                cursor:pointer;
+                transition:all 0.2s;
+            " onmouseover="this.style.background='#1ebe57';this.style.transform='translateY(-1px)';"
+               onmouseout="this.style.background='#25D366';this.style.transform='translateY(0)';">
+                📱 Hubungi via WhatsApp
+            </button>
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
+
     st.markdown("---")
     st.markdown("### 📝 Deskripsi Produk")
     st.markdown(f"""
@@ -911,6 +1019,190 @@ def page_marketing():
                 """, unsafe_allow_html=True)
 
 
+# ── Request Barang Page ──────────────────────────────────────
+def page_request():
+    """Page for resellers to request products not in SKU catalog."""
+    st.markdown("## 📋 Request Barang")
+    st.markdown("""
+    <div style="background:#FFF3E0; padding:12px 16px; border-radius:8px; 
+                border-left:4px solid #FF9800; margin-bottom:16px;">
+        <b>💡 Tidak menemukan barang yang dicari?</b><br>
+        <span style="font-size:0.85rem;color:#616161;">
+        Request barang di sini — tim kami akan mencarikan dan menghubungi Anda via WhatsApp.
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── Tabs: Form Request | Riwayat Request ──
+    tab1, tab2 = st.tabs(["📝 Buat Request", "📋 Riwayat Request"])
+
+    with tab1:
+        st.markdown("### 📝 Form Request Barang")
+
+        logged_in = st.session_state.get("logged_in", False)
+        user_name = st.session_state.get("user", "")
+        username = st.session_state.get("username", "")
+        user_role = st.session_state.get("role", "")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if logged_in:
+                nama = st.text_input("Nama Reseller *", value=user_name, key="req_name")
+            else:
+                nama = st.text_input("Nama Lengkap *", placeholder="Nama Anda", key="req_name")
+
+            product_name = st.text_input(
+                "Nama Produk yang Dicari *",
+                placeholder="Contoh: Kaos Oversize Polos Warna Pastel",
+                key="req_product"
+            )
+
+            brand = st.text_input("Brand / Merek (jika tahu)", placeholder="Contoh: Nike, Adidas, Uniqlo...", key="req_brand")
+
+            category = st.selectbox(
+                "Kategori",
+                ["", "FASHION PRIA", "FASHION WANITA", "FASHION ANAK",
+                 "AKSESORIS", "SEPATU", "SALE", "LAINNYA"],
+                key="req_category"
+            )
+
+        with col2:
+            if logged_in and user_role == "reseller":
+                reseller_data = get_reseller_by_email(username)
+                wa_default = reseller_data.get("phone", "") if reseller_data else ""
+            else:
+                wa_default = ""
+            whatsapp = st.text_input(
+                "Nomor WhatsApp *",
+                value=wa_default,
+                placeholder="0812-3456-7890",
+                key="req_wa"
+            )
+
+            target_price = st.text_input(
+                "Target Harga (Rp)",
+                placeholder="Contoh: 50000 - 100000",
+                key="req_price"
+            )
+
+            quantity = st.text_input(
+                "Jumlah yang Diinginkan",
+                placeholder="Contoh: 12 pcs (1 lusin)",
+                key="req_qty"
+            )
+
+            ref_link = st.text_input(
+                "Link Referensi (opsional)",
+                placeholder="Link Shopee/Tokopedia/Lazada...",
+                key="req_link"
+            )
+
+        description = st.text_area(
+            "Deskripsi / Alasan Request *",
+            placeholder="Jelaskan spesifikasi barang yang dicari: bahan, ukuran, warna, model, target pembeli, dll...",
+            height=120,
+            key="req_desc"
+        )
+
+        st.markdown("---")
+
+        col_submit, _ = st.columns([1, 3])
+        with col_submit:
+            if st.button("📤 Kirim Request", use_container_width=True, type="primary", key="btn_submit_req"):
+                errors = []
+                if not nama:
+                    errors.append("Nama")
+                if not whatsapp:
+                    errors.append("Nomor WhatsApp")
+                if not product_name:
+                    errors.append("Nama Produk")
+                if not description:
+                    errors.append("Deskripsi")
+
+                if errors:
+                    st.error(f"❌ Mohon isi: {', '.join(errors)}")
+                else:
+                    new_req = add_request(
+                        reseller_name=nama,
+                        whatsapp=whatsapp,
+                        product_name=product_name,
+                        brand=brand,
+                        category=category,
+                        target_price=target_price,
+                        quantity=quantity,
+                        description=description,
+                        ref_link=ref_link,
+                        reseller_id=username if logged_in else "",
+                    )
+                    st.success("✅ Request berhasil dikirim!")
+                    st.balloons()
+                    st.markdown(f"""
+                    <div style="background:#E8F5E9; padding:16px; border-radius:12px; 
+                                border:1px solid #A5D6A7; margin:12px 0;">
+                        <b>🎉 Terima kasih, {nama}!</b><br>
+                        Request <code>{new_req['id']}</code> untuk <b>{product_name}</b> telah tercatat.<br><br>
+                        Tim kami akan mencarikan barang yang Anda minta dan menghubungi via
+                        <b>WhatsApp {whatsapp}</b> dalam 1-2 hari kerja.
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    for k in ["req_name", "req_product", "req_brand", "req_category",
+                              "req_wa", "req_price", "req_qty", "req_link", "req_desc"]:
+                        if k in st.session_state:
+                            del st.session_state[k]
+                    st.rerun()
+
+    with tab2:
+        st.markdown("### 📋 Riwayat Request Anda")
+
+        if logged_in:
+            my_requests = get_requests_by_reseller(username)
+        else:
+            st.info("🔑 **Login** untuk melihat riwayat request Anda.")
+            my_requests = []
+
+        if not my_requests:
+            st.info("📭 Belum ada request. Silakan buat request baru di tab 'Buat Request'.")
+        else:
+            st.caption(f"Total: {len(my_requests)} request")
+            for req in my_requests:
+                status_map = {
+                    "pending": ("⏳ Menunggu", "#FF9800", "#FFF3E0"),
+                    "reviewed": ("👀 Ditinjau", "#2196F3", "#E3F2FD"),
+                    "approved": ("✅ Disetujui", "#4CAF50", "#E8F5E9"),
+                    "rejected": ("❌ Ditolak", "#F44336", "#FFEBEE"),
+                }
+                status_label, status_color, status_bg = status_map.get(
+                    req.get("status", "pending"),
+                    (req["status"], "#757575", "#F5F5F5")
+                )
+                st.markdown(f"""
+                <div style="background:white; padding:14px; border-radius:10px;
+                            border:1px solid #E0E0E0; margin:10px 0;">
+                    <div style="display:flex; justify-content:space-between;
+                                align-items:center; flex-wrap:wrap; gap:8px;">
+                        <div>
+                            <b>{req['product_name']}</b>
+                            <span style="font-size:0.75rem; color:#9E9E9E;">
+                                {req.get('brand', '') and ' · ' + req['brand']}
+                            </span>
+                        </div>
+                        <span style="background:{status_bg}; color:{status_color};
+                                     padding:4px 12px; border-radius:20px;
+                                     font-size:0.75rem; font-weight:600;">
+                            {status_label}
+                        </span>
+                    </div>
+                    <div style="font-size:0.8rem; color:#757575; margin-top:6px;">
+                        <code>{req['id']}</code> · {req.get('created_at', '-')[:16]}
+                        {req.get('target_price', '') and ' · Target: Rp ' + req['target_price']}
+                        {req.get('quantity', '') and ' · Qty: ' + req['quantity']}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+
 # ── About Page ───────────────────────────────────────────────
 def page_about():
     """About / Help page."""
@@ -1026,9 +1318,10 @@ def get_usd_idr_data() -> dict:
 # ── Main App ─────────────────────────────────────────────────
 def main():
     """Main application entry point."""
-    # Inject PWA & CSS
+    # Inject PWA, CSS & WhatsApp button
     inject_pwa()
     inject_css()
+    inject_whatsapp_button()
 
     # Check login status (does NOT block - guests can browse)
     logged_in = check_login()
@@ -1178,6 +1471,7 @@ def main():
             nav_items = [
                 ("🏠 Beranda", 0),
                 ("📊 Marketing", 1),
+                ("📋 Request Barang", 5),
                 ("💬 Chat", 2),
                 ("📖 Panduan", 3),
             ]
@@ -1186,6 +1480,7 @@ def main():
                 ("🏠 Beranda", 0),
                 (f"🛒 Keranjang ({cart_count})", 1),
                 ("📝 Checkout", 2),
+                ("📋 Request Barang", 5),
                 (f"💬 Chat{chat_badge}", 3),
                 ("📖 Panduan", 4),
             ]
@@ -1194,6 +1489,7 @@ def main():
     else:
         nav_items = [
             ("🏠 Beranda", 0),
+            ("📋 Request Barang", 4),
             ("🔑 Masuk / Daftar", 1),
             ("📖 Panduan", 2),
         ]
@@ -1224,7 +1520,7 @@ def main():
 
     if logged_in:
         if is_marketing:
-            # Marketing: 0=Katalog, 1=Marketing, 2=Chat, 3=Panduan
+            # Marketing: 0=Katalog, 1=Marketing, 2=Chat, 3=Panduan, 4=Admin, 5=Request
             if active == 0:
                 page_catalog()
             elif active == 1:
@@ -1233,10 +1529,12 @@ def main():
                 page_chat()
             elif active == 3:
                 page_about()
+            elif active == 5:
+                page_request()
             elif is_admin and active == 4:
                 page_admin()
         else:
-            # Reseller/Admin: 0=Katalog, 1=Cart, 2=Checkout, 3=Chat, 4=Panduan
+            # Reseller/Admin: 0=Katalog, 1=Cart, 2=Checkout, 3=Chat, 4=Panduan, 5=Request
             if active == 0:
                 page_catalog()
             elif active == 1:
@@ -1247,16 +1545,20 @@ def main():
                 page_chat()
             elif active == 4:
                 page_about()
-            elif is_admin and active == 5:
+            elif active == 5:
+                page_request()
+            elif is_admin and active == 6:
                 page_admin()
     else:
-        # Guest: 0=Katalog, 1=Login, 2=Panduan
+        # Guest: 0=Katalog, 1=Login, 2=Panduan, 4=Request
         if active == 0:
             page_catalog()
         elif active == 1:
             show_auth_page()
         elif active == 2:
             page_about()
+        elif active == 4:
+            page_request()
 
     # Footer
     st.markdown("---")
