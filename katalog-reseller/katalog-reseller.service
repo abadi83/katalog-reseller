@@ -1,0 +1,18 @@
+[Unit]
+Description=Katalog Reseller - Streamlit PWA
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/katalog-reseller
+ExecStartPre=/usr/bin/docker compose -f /opt/katalog-reseller/docker-compose.yml down
+ExecStart=/usr/bin/docker compose -f /opt/katalog-reseller/docker-compose.yml up app
+ExecStop=/usr/bin/docker compose -f /opt/katalog-reseller/docker-compose.yml down
+Restart=always
+RestartSec=10
+TimeoutStartSec=120
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

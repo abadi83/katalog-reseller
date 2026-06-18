@@ -612,29 +612,6 @@ def _tab_edit_product():
         existing_images = [product["image"]]
     _render_image_slot_grid("edit", existing_images)
 
-    # ── 3D Model ──
-    st.markdown("---")
-    st.markdown("### 🧊 Model 3D (Opsional)")
-    existing_3d = product.get("model_3d")
-    if existing_3d:
-        st.success("✅ Produk ini sudah memiliki model 3D. Upload baru untuk mengganti.")
-        if st.button("🗑️ Hapus Model 3D", key="edit_del_3d"):
-            for i, p in enumerate(st.session_state.products):
-                if p["sku"] == sku:
-                    st.session_state.products[i]["model_3d"] = None
-                    st.success("✅ Model 3D dihapus!")
-                    st.rerun()
-            st.stop()
-    model_3d_file = st.file_uploader(
-        "📤 Upload Model 3D (.glb / .gltf) — Maks 20MB",
-        type=["glb", "gltf"],
-        key="edit_model_3d",
-        accept_multiple_files=False,
-    )
-    new_model_3d = save_3d_model(model_3d_file) if model_3d_file else existing_3d
-    if model_3d_file and new_model_3d:
-        st.success("✅ Model 3D baru siap disimpan! 🧊")
-
     col_save, col_del = st.columns([3, 1])
 
     with col_save:
@@ -662,7 +639,6 @@ def _tab_edit_product():
                             "available": new_available,
                             "can_return": new_can_return,
                             "images": final_images,
-                            "model_3d": new_model_3d,
                             "description": new_desc,
                             "weight": new_weight,
                             "colors": [c.strip() for c in new_colors.split(",")
