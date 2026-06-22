@@ -213,7 +213,7 @@ def _reseller_chat_view(user: str, name: str, role: str):
     st.markdown("### 📱 Butuh respon cepat?")
     wa_number = "6285211112525"  # Ganti dengan nomor WhatsApp Admin
     wa_link = f"https://wa.me/{wa_number}?text=Halo%20Admin%2C%20saya%20{name.replace(' ', '%20')}%20dari%20Katalog%20Reseller..."
-    st.markdown(f"""
+    st.html(f"""
     <div style="
         background: #E8F5E9;
         border: 1px solid #A5D6A7;
@@ -238,51 +238,24 @@ def _reseller_chat_view(user: str, name: str, role: str):
             💬 Chat via WhatsApp
         </a>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
 
 # ── Message Renderer ─────────────────────────────────────────
 def _render_messages(messages: list, current_user: str):
-    """Render chat messages with WhatsApp-style bubbles."""
+    """Render chat messages using Streamlit's native chat_message component."""
     if not messages:
         st.caption("Belum ada pesan.")
         return
 
     for msg in messages:
         is_mine = msg["sender"] == current_user
-        align = "flex-end" if is_mine else "flex-start"
-        bg_color = "#E53935" if is_mine else "#F5F5F5"
-        text_color = "white" if is_mine else "#212121"
-        bubble_align = "right" if is_mine else "left"
-        margin = "margin-left: auto;" if is_mine else "margin-right: auto;"
+        role = "user" if is_mine else "assistant"
+        sender = msg.get("sender_name", "")
 
-        sender_label = ""
-        if not is_mine:
-            sender_label = f'<div style="font-size:0.65rem;color:#9E9E9E;margin-bottom:2px;">{msg["sender_name"]}</div>'
-
-        st.markdown(f"""
-        <div style="display:flex; flex-direction:column; align-items:{align}; margin-bottom:8px; max-width:100%;">
-            {sender_label}
-            <div style="
-                {margin}
-                background: {bg_color};
-                color: {text_color};
-                padding: 10px 14px;
-                border-radius: 16px;
-                border-bottom-{bubble_align}-radius: 4px;
-                max-width: 75%;
-                word-wrap: break-word;
-                font-size: 0.9rem;
-                line-height: 1.4;
-                position: relative;
-            ">
-                {msg["text"]}
-                <div style="
-                    font-size: 0.6rem;
-                    opacity: 0.7;
-                    text-align: right;
-                    margin-top: 4px;
-                ">{msg["timestamp"]}</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        with st.chat_message(role, avatar="🧑" if is_mine else "🛍️"):
+            # Sender label for non-user messages
+            if not is_mine and sender:
+                st.caption(f"**{sender}**")
+            st.markdown(msg.get("text", ""))
+            st.caption(msg.get("timestamp", ""))

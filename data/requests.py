@@ -26,7 +26,7 @@ def _save_requests(requests: list):
 def add_request(reseller_name: str, whatsapp: str, product_name: str,
                 brand: str = "", category: str = "", target_price: str = "",
                 quantity: str = "", description: str = "", ref_link: str = "",
-                reseller_id: str = "") -> dict:
+                reseller_id: str = "", image: str = "", shopee_url: str = "") -> dict:
     """Add a new product request."""
     requests = _load_requests()
     req = {
@@ -41,6 +41,8 @@ def add_request(reseller_name: str, whatsapp: str, product_name: str,
         "quantity": quantity,
         "description": description,
         "ref_link": ref_link,
+        "image": image,
+        "shopee_url": shopee_url,
         "status": "pending",  # pending, reviewed, approved, rejected
         "admin_notes": "",
         "created_at": datetime.now().isoformat(),

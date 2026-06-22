@@ -23,6 +23,10 @@ from utils.chat import page_chat, init_chat, get_unread_count
 from data.commissions import add_commission, get_commissions_for_marketing, get_total_commission, get_pending_commission
 from data.resellers import get_reseller_by_email, get_downline_list, get_all_resellers
 from data.requests import add_request, get_all_requests, get_requests_by_reseller, get_pending_count, update_request_status, delete_request
+from data.products import pil_to_base64
+from PIL import Image
+from io import BytesIO
+import base64
 
 # ── Konfigurasi ──────────────────────────────────────────────
 ADMIN_WHATSAPP = "6285211112525"  # Ganti dengan nomor admin
@@ -1064,13 +1068,13 @@ def page_request():
     # ── Tabs: Form Request | Riwayat Request ──
     tab1, tab2 = st.tabs(["📝 Buat Request", "📋 Riwayat Request"])
 
+    logged_in = st.session_state.get("logged_in", False)
+    user_name = st.session_state.get("user", "")
+    username = st.session_state.get("username", "")
+    user_role = st.session_state.get("role", "")
+
     with tab1:
         st.markdown("### 📝 Form Request Barang")
-
-        logged_in = st.session_state.get("logged_in", False)
-        user_name = st.session_state.get("user", "")
-        username = st.session_state.get("username", "")
-        user_role = st.session_state.get("role", "")
 
         col1, col2 = st.columns(2)
 
@@ -1122,8 +1126,14 @@ def page_request():
 
             ref_link = st.text_input(
                 "Link Referensi (opsional)",
-                placeholder="Link Shopee/Tokopedia/Lazada...",
+                placeholder="Link Tokopedia/Lazada/Tiktok Shop...",
                 key="req_link"
+            )
+
+            shopee_url = st.text_input(
+                "🔗 URL Shopee (opsional)",
+                placeholder="https://shopee.co.id/nama-produk...",
+                key="req_shopee"
             )
 
         description = st.text_area(
@@ -1131,6 +1141,16 @@ def page_request():
             placeholder="Jelaskan spesifikasi barang yang dicari: bahan, ukuran, warna, model, target pembeli, dll...",
             height=120,
             key="req_desc"
+        )
+
+        # ── Upload Gambar Produk ──
+        st.markdown("### 🖼️ Upload Gambar Produk (opsional)")
+        st.caption("Upload foto referensi produk yang dicari (maks. 1 file, JPEG/PNG)")
+        uploaded_image = st.file_uploader(
+            "Pilih gambar...",
+            type=["jpg", "jpeg", "png", "webp"],
+            key="req_image_upload",
+            label_visibility="collapsed"
         )
 
         st.markdown("---")
@@ -1151,6 +1171,21 @@ def page_request():
                 if errors:
                     st.error(f"❌ Mohon isi: {', '.join(errors)}")
                 else:
+                    # ── Process uploaded image ──
+                    img_base64 = ""
+                    if uploaded_image is not None:
+                        try:
+                            img = Image.open(uploaded_image).convert("RGB")
+                            w, h = img.size
+                            side = min(w, h)
+                            left = (w - side) // 2
+                            top = (h - side) // 2
+                            img = img.crop((left, top, left + side, top + side))
+                            img = img.resize((600, 600), Image.LANCZOS)
+                            img_base64 = pil_to_base64(img, "JPEG")
+                        except Exception as e:
+                            st.warning(f"⚠️ Gagal memproses gambar: {e}")
+
                     new_req = add_request(
                         reseller_name=nama,
                         whatsapp=whatsapp,
@@ -1161,6 +1196,8 @@ def page_request():
                         quantity=quantity,
                         description=description,
                         ref_link=ref_link,
+                        shopee_url=shopee_url,
+                        image=img_base64,
                         reseller_id=username if logged_in else "",
                     )
                     st.success("✅ Request berhasil dikirim!")
@@ -1176,19 +1213,24 @@ def page_request():
                     """, unsafe_allow_html=True)
 
                     for k in ["req_name", "req_product", "req_brand", "req_category",
-                              "req_wa", "req_price", "req_qty", "req_link", "req_desc"]:
+                              "req_wa", "req_price", "req_qty", "req_link", "req_shopee",
+                              "req_desc", "req_image_upload"]:
                         if k in st.session_state:
                             del st.session_state[k]
                     st.rerun()
 
     with tab2:
-        st.markdown("### 📋 Riwayat Request Anda")
-
-        if logged_in:
-            my_requests = get_requests_by_reseller(username)
+        if user_role == "admin":
+            st.markdown("### 📋 Semua Request (Admin)")
+            my_requests = get_all_requests()
         else:
-            st.info("🔑 **Login** untuk melihat riwayat request Anda.")
-            my_requests = []
+            st.markdown("### 📋 Riwayat Request Anda")
+
+            if logged_in:
+                my_requests = get_requests_by_reseller(username)
+            else:
+                st.info("🔑 **Login** untuk melihat riwayat request Anda.")
+                my_requests = []
 
         if not my_requests:
             st.info("📭 Belum ada request. Silakan buat request baru di tab 'Buat Request'.")
@@ -1227,8 +1269,38 @@ def page_request():
                         {req.get('target_price', '') and ' · Target: Rp ' + req['target_price']}
                         {req.get('quantity', '') and ' · Qty: ' + req['quantity']}
                     </div>
+                    {f'<div style="margin-top:8px;"><img src="{req["image"]}" style="max-width:120px; border-radius:8px; border:1px solid #E0E0E0;"></div>' if req.get('image') else ''}
+                    {f'<div style="margin-top:6px;"><a href="{req["shopee_url"]}" target="_blank" style="font-size:0.8rem; color:#EE4D2D; text-decoration:none;">🛒 {req["shopee_url"][:60]}{"..." if len(req.get("shopee_url","")) > 60 else ""}</a></div>' if req.get('shopee_url') else ''}
+                    {f'<div style="margin-top:6px; font-size:0.8rem; color:#616161;">📝 {req.get("description","")[:120]}{"..." if len(req.get("description","")) > 120 else ""}</div>' if req.get('description') else ''}
                 </div>
                 """, unsafe_allow_html=True)
+
+                # ── Admin Controls ──
+                if user_role == "admin":
+                    admin_col1, admin_col2, admin_col3 = st.columns([2, 1, 1])
+                    with admin_col1:
+                        new_status = st.selectbox(
+                            "Status",
+                            ["pending", "reviewed", "approved", "rejected"],
+                            index=["pending", "reviewed", "approved", "rejected"].index(req.get("status", "pending")),
+                            key=f"admin_status_{req['id']}"
+                        )
+                    with admin_col2:
+                        admin_note = st.text_input(
+                            "Catatan", value=req.get("admin_notes", ""),
+                            key=f"admin_note_{req['id']}",
+                            placeholder="Catatan untuk reseller..."
+                        )
+                    with admin_col3:
+                        st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
+                        if st.button("💾 Update", key=f"admin_upd_{req['id']}", use_container_width=True):
+                            update_request_status(req['id'], new_status, admin_note)
+                            st.success(f"✅ Request {req['id']} diupdate!")
+                            st.rerun()
+                        if st.button("🗑️ Hapus", key=f"admin_del_{req['id']}", use_container_width=True):
+                            delete_request(req['id'])
+                            st.success(f"🗑️ Request {req['id']} dihapus!")
+                            st.rerun()
 
 
 # ── About Page ───────────────────────────────────────────────
